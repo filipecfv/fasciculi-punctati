@@ -1,0 +1,344 @@
+
+
+* Configurações básicas 
+** Performance de inicialização
+#+begin_src emacs-lisp
+ (defun efs/display-startup-time ()
+  (message "Emacs loaded in %s with %d garbage collections."
+           (format "%.2f seconds"
+                   (float-time
+                   (time-subtract after-init-time before-init-time)))
+           gcs-done))
+(add-hook 'emacs-startup-hook #'efs/display-startup-time)
+#+end_src
+
+** Layout e opções básicas
+#+begin_src emacs-lisp
+;; tela inicial
+;; (setq initial-buffer-choice "~/.emacs.d/inicial.org")
+
+;; remover boas vindas, menus, barras
+(setq inhibit-startup-message t)
+(tool-bar-mode -1)
+(menu-bar-mode -1) 
+(scroll-bar-mode -1)
+(global-visual-line-mode 1)
+
+(setq delete-by-moving-to-trash t)
+(setq org-src-preserve-indentation t)
+
+;; Numeros nas linhas e colunas no buffer; 
+(line-number-mode 1)
+(column-number-mode 1)
+
+;; para highlight o cursor 
+(global-hl-line-mode 1)
+#+end_src
+
+** Espaçamento e fonte padrão
+#+begin_src emacs-lisp
+(setq-default line-spacing 0)
+;; (set-face-attribute 'default nil :font "Iosevka Comfy Light-17" )
+;;(set-face-attribute 'fixed-pitch nil :font "Iosevka Comfy Light-17" )
+#+end_src
+
+** Tema
+#+begin_src emacs-lisp
+(load-theme 'modus-vivendi t)
+(setq modus-themes-completions 2
+      modus-themes-bold-constructs t
+      modus-themes-syntax '(alt-syntax)
+      modus-themes-mixed-fonts t)
+#+end_src
+
+** Atalhos
+*** Em geral
+#+begin_src emacs-lisp
+;;trocar de tela Control + tab:
+(global-set-key (kbd "C-<tab>") 'other-window)
+
+;; aumentar e diminuir janelas:
+;; Alt + up aumenta, Alt + down diminui etc
+(global-set-key (kbd "M-<down>") 'enlarge-window)
+(global-set-key (kbd "M-<up>") 'shrink-window)
+(global-set-key (kbd "M-<left>") 'enlarge-window-horizontally)
+(global-set-key (kbd "M-<right>") 'shrink-window-horizontally)
+#+end_src
+
+*** Acessar config.org
+#+begin_src emacs-lisp
+(global-set-key (kbd "C-c i") (lambda() (interactive)(find-file "~/.emacs.d/config.org")))
+#+end_src
+
+** Configurações do dired
+#+begin_src emacs-lisp
+(setq dired-listing-switches "-l --group-directories-first -va")
+(add-hook 'dired-mode-hook 'dired-sort-toggle-or-edit)
+
+#+end_src
+
+* Pacotes
+** Configurações
+#+begin_src emacs-lisp
+(require 'package) 
+(package-initialize) 
+(unless (package-installed-p 'use-package)
+  (package-install 'use-package))
+(require 'use-package)
+(setq use-package-always-ensure t)
+#+end_src
+
+** Evil-mode
+#+begin_src emacs-lisp
+;; Evil mode
+(use-package evil)
+(setq evil-insert-state-cursor '((box))
+      evil-normal-state-cursor '(box))
+(evil-define-key 'normal org-mode-map (kbd "<tab>") #'org-cycle)
+(define-key evil-normal-state-map (kbd "j") 'evil-next-visual-line)
+(define-key evil-normal-state-map (kbd "k") 'evil-previous-visual-line)
+(evil-mode 1)
+#+end_src
+
+** Olivetti
+#+begin_src emacs-lisp
+(use-package olivetti)
+
+(defun olivetti-org ()
+  (olivetti-mode)
+  )
+(add-hook 'org-mode-hook 'olivetti-org)
+#+end_src
+
+** modos menores
+#+begin_src emacs-lisp
+(use-package wc-mode)
+(use-package csv-mode)
+#+end_src
+
+** leitor de arquivos (pdf, epub)
+#+begin_src emacs-lisp
+;; nov.el -- leitor de epub no emacs
+(use-package nov)
+(add-to-list 'auto-mode-alist '("\\.epub\\'" . nov-mode))
+
+;; pdf-tools
+(use-package pdf-tools
+  :config
+  (pdf-tools-install))
+#+end_src
+
+** Processadores (pandoc, latex)
+#+begin_src emacs-lisp
+;; OX-PANDOC; para exportar para diferentes formatos
+(use-package ox-pandoc)
+
+;; AucTex (rendereziar latex em texto)
+(use-package latex)
+#+end_src
+
+* Autocompleção
+#+begin_src emacs-lisp
+;; ido-vertical-mode: auto-completa os caminhos dos arquivos
+(use-package ido-vertical-mode)
+(require 'ido-vertical-mode)
+(ido-mode 1)
+(ido-vertical-mode 1)
+
+;; autocompleta M-x
+(use-package vertico
+  :config
+  (vertico-mode))
+
+;; para que a pesquisa use letras internas e não na ordem
+(use-package orderless
+  :custom
+  (completion-styles '(orderless basic))
+  (completion-category-overrides '((file (styles basic partial-completion)))))
+
+;; descreve os comandos M-x
+(use-package marginalia
+  :bind (("M-A" . marginalia-cycle)
+         :map minibuffer-local-map
+         ("M-A" . marginalia-cycle))
+  :init
+  (marginalia-mode))
+#+end_src
+
+* Denote
+** Básico
+#+begin_src emacs-lisp
+(use-package denote)
+
+(setq denote-rename-buffer-format "%t")
+
+(setq denote-directory "~/Denote"
+	denote-prompts '(title subdirectory keywords))
+
+(add-hook 'dired-mode-hook
+     (lambda ()
+        (dired-hide-details-mode)
+	(dired-sort-toggle-or-edit)
+	))
+
+;;(require 'denote-dired)
+(add-hook 'dired-mode-hook #'denote-dired-mode)
+
+;; atalho para o denote
+(global-set-key (kbd "C-c n n") (lambda() (interactive)(find-file denote-directory)))
+#+end_src
+
+** Funções próprias para o denote
+#+begin_src emacs-lisp
+(defun denote-sort-by-signature ()
+  "organiza todas as notas do denote por signature automaticamente"
+    (interactive)
+    (denote-sort-dired "=" 'signature nil)
+)
+
+(global-set-key (kbd "C-c n s") (lambda() (interactive)(denote-sort-by-signature))) 
+#+end_src
+
+** Consult
+#+begin_src emacs-lisp
+; consult: para pesquisar conteúdo (no denote; principal comando: consult-grep)
+(use-package consult)
+
+(global-set-key (kbd "C-x b") 'consult-buffer) ;; exibir um buffer aberto
+(global-set-key (kbd "C-x w b") 'consult-buffer-other-window) ;; exibir um buffer aberto numa outra janela
+
+(use-package consult-notes
+  :commands (consult-notes
+             consult-notes-search-in-all-notes))
+#+end_src
+
+** Denote-menu
+#+begin_src emacs-lisp
+;; denote-menu, para melhor visualização das notas no emacs
+(use-package denote-menu)
+
+(setq denote-menu-show-file-signature t)
+
+(global-set-key (kbd "C-c n l") 'list-denotes)
+#+end_src
+
+** Org transclusion
+#+begin_src emacs-lisp
+(use-package org-transclusion)
+
+(define-key global-map (kbd "<f12>") #'org-transclusion-add)
+(define-key global-map (kbd "C-c t") #'org-transclusion-mode)
+
+;; para remover titulo etc. 
+(setq org-transclusion-exclude-elements '(keyword))
+
+;; para adicionar suporte ao link do tipo denote
+(defun denote-org-transclusion-add (link plist)
+  (when (string= "denote" (org-element-property :type link))
+    (let* ((denote-id (org-element-property :path link)) 
+	   (file-path (denote-get-path-by-id denote-id)) 
+	   (new-link (with-temp-buffer                       
+		       (insert "file:") 
+		       (insert file-path)
+		       (beginning-of-buffer)
+		       (org-element-link-parser))))
+      (org-transclusion-add-org-file new-link plist))))      
+(cl-pushnew 'denote-org-transclusion-add 
+	    org-transclusion-add-functions)
+#+end_src
+
+** Visão rápida das notas
+#+begin_src emacs-lisp
+(add-hook 'dired-mode-hook
+  (lambda()
+    (define-key dired-mode-map (kbd "C-o") 'dired-view-current)     ; was dired-display-file
+    (define-key dired-mode-map (kbd "n")   'dired-view-next)           ; was dired-next-line
+    (define-key dired-mode-map (kbd "p")   'dired-view-previous))) ; was dired-previous-line
+
+(defun dired-view-next ()
+  "Move down one line and view the current file in another window."
+  (interactive)
+  (dired-next-line 1)
+  (dired-view-current))
+
+(defun dired-view-previous ()
+  "Move up one line and view the current file in another window."
+  (interactive)
+  (dired-previous-line 1)
+  (dired-view-current))
+
+(defun dired-view-current ()
+  "View the current file in another side window (possibly newly created)."
+  (interactive)
+  (if (not (window-parent))
+      (split-window-right)) 
+  (let ((file (dired-get-file-for-visit))
+        (dbuffer (current-buffer)))
+    (other-window 1) 
+    (unless (equal dbuffer (current-buffer)) 
+      (if (or view-mode (equal major-mode 'dired-mode)) 
+          (kill-buffer))) 
+    (let ((filebuffer (get-file-buffer file)))
+      (if filebuffer 
+          (switch-to-buffer filebuffer) 
+        (view-file file)) 
+      (other-window -1)))) 
+#+end_src
+* Org
+** Básico
+#+begin_src emacs-lisp
+(use-package org-superstar
+  :config
+  (setq  org-superstar-headline-bullets-list '("◉" "○" "●" "✦")
+	 org-superstar-special-todo-items t
+	 org-superstar-prettify-item-bullets t
+	 org-superstar-remove-leading-stars t)
+  (add-hook 'org-mode-hook (lambda () (org-superstar-mode 1))))
+
+(setq org-hide-emphasis-markers t)
+
+;; para começar o org-mode com tudo fechado e indentado
+(setq org-startup-folded t)
+(setq org-startup-indented t)
+
+;; indentação correta
+(setq org-adapt-indentation t
+      org-hide-leading-stars nil
+      org-odd-levels-only nil)
+
+;; para exportar aspas
+(setq org-export-with-smart-quotes t)
+
+;; Para tirar os // dos italicos e deixar só os italicos; 
+(setq org-hide-emphasis-markers nil)
+
+;; Increase size of LaTeX fragment previews
+ (plist-put org-format-latex-options :scale 2)
+
+;; para sempre abrir de lado; sempre dispor imagens;
+(defadvice org-agenda (around split-vertically activate)
+  (let ((split-width-threshold 80)) 
+    ad-do-it))
+(setq split-height-threshold nil
+      split-width-threshold 120)
+(setq org-startup-with-inline-images t)
+
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((R . t)
+ (gnuplot . t))
+ )
+#+end_src
+
+** Export org 
+#+begin_src emacs-lisp
+(setq
+ org-export-with-toc nil ; remover toc do default
+ org-export-default-language "pt-br") 
+
+(setq org-export-with-section-numbers t)
+
+;; para impedir que as imagens conservem seu tamanho original
+(setq org-image-actual-width '(500)) 
+#+end_src
+
