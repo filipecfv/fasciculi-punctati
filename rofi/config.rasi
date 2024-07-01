@@ -1,0 +1,9 @@
+configuration {
+    drun-display-format: "{icon} {name}";
+    show-icons: true;
+    display-drun: "Aplicativos";
+    font: "Fira Code 15";
+}
+
+//@theme "/usr/share/rofi/themes/gruvbox-dark.rasi"
+@theme "/usr/share/rofi/themes/glue_pro_blue.rasi"
